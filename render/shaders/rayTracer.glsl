@@ -41,11 +41,12 @@ layout(rgba32f, binding = 0) uniform image2D img_output;
 uniform Camera viewer;
 //
 // uniform Sphere spheres[32];
-// layout(rgba32f, binding = 1) readonly uniform image2D spheres;
-layout(std430, binding = 1) readonly buffer sceneData
-{
-    Sphere[] spheres;
-};
+layout(rgba32f, binding = 1) readonly uniform image2D spheres;
+
+// layout(std430, binding = 1) readonly buffer sceneData
+// {
+//     Sphere[] spheres;
+// };
 
 uniform float sphereCount;
 
@@ -95,7 +96,7 @@ vec3 rayColor(Ray ray)
 
     for(int i = 0; i < sphereCount; i++)
     {
-        renderState = hit(ray, spheres[i], 0.001, nearestHit, renderState);
+        renderState = hit(ray, unpackSphere(i), 0.001, nearestHit, renderState);
 
         if (renderState.hit)
         {
@@ -138,16 +139,16 @@ RenderState hit(Ray ray, Sphere sphere, float tMin, float tMax, RenderState rend
 }
 
 // for image buffer
-// Sphere unpackSphere(int index)
-// {
-//     Sphere sphere;
-//     // gets position
-//     vec4 attributeChunk = imageLoad(spheres, ivec2(0, index));
-//     sphere.center = attributeChunk.xyz;
-//     sphere.radius = attributeChunk.w;
-//     // gets color
-//     attributeChunk = imageLoad(spheres, ivec2(1, index));
-//     sphere.color = attributeChunk.xyz;
+Sphere unpackSphere(int index)
+{
+    Sphere sphere;
+    // gets position
+    vec4 attributeChunk = imageLoad(spheres, ivec2(0, index));
+    sphere.center = attributeChunk.xyz;
+    sphere.radius = attributeChunk.w;
+    // gets color
+    attributeChunk = imageLoad(spheres, ivec2(1, index));
+    sphere.color = attributeChunk.xyz;
 
-//     return sphere;
-// }
+    return sphere;
+}

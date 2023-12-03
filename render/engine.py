@@ -26,23 +26,38 @@ class Engine:
         self.screenQuad = screen_quad.ScreenQuad()
 
         self.colorBuffer = material.Material(self.screenWidth, self.screenHeight)
+        
         self.createResourceMemory()
         self.shader = self.createShader("shaders/frameBufferVertex.glsl",
                                         "shaders/frameBufferFragment.glsl")
         
         self.rayTracerShader = self.createComputeShader("shaders/rayTracer.glsl")
+    
     def createResourceMemory(self):
         # packing data into a 1024 image
         # center, radius, color
         # (x, y, z, radius), (r, g, b, _)
-        sphereData = []
+        # sphereData = []
 
+        # for i in range(1024):
+        #     for attribute in range(8):
+        #         sphereData.append(0.0)
+        # self.sphereData = np.array(sphereData, dtype = np.float32)
+
+        # initialize all at once
         self.sphereData = np.zeros(8 * 1024, dtype = np.float32)
 
-        self.sphereDataBuffer = glGenBuffers(1)
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.sphereDataBuffer)
-        glBufferData(GL_SHADER_STORAGE_BUFFER , self.sphereData.nbytes,self.sphereData, GL_DYNAMIC_READ)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, self.sphereDataBuffer)
+        self.sphereDataTexture = glGenTextures(1)
+        glActiveTexture(GL_TEXTURE1)
+        glBindTexture(GL_TEXTURE_2D, self.sphereDataTexture)
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+
+    
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 2, 1024, 0, GL_RGBA, GL_FLOAT, bytes(self.sphereData))
     
     def createShader(self, vertexFilepath, fragmentFilepath) -> int:
         """
@@ -115,13 +130,13 @@ class Engine:
             # glUniform3fv(glGetUniformLocation(self.rayTracerShader, f"spheres[{i}].color"), 1, _sphere.color)
         
         # updates texture that we're using to pass data/ for img not in use
-        # glActiveTexture(GL_TEXTURE1)
-        # glBindTexture(GL_TEXTURE_2D, self.sphereDataTexture)
-        # glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 2, 1024, 0, GL_RGBA, GL_FLOAT, bytes(self.sphereData))
-        # glBindImageTexture(1, self.sphereDataTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.sphereDataBuffer)
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER ,0, 8 * 4 * len(_scene.spheres), self.sphereData)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, self.sphereDataBuffer)
+        glActiveTexture(GL_TEXTURE1)
+        glBindTexture(GL_TEXTURE_2D, self.sphereDataTexture)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 2, 1024, 0, GL_RGBA, GL_FLOAT, bytes(self.sphereData))
+        glBindImageTexture(1, self.sphereDataTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)
+        # glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.sphereDataBuffer)
+        # glBufferSubData(GL_SHADER_STORAGE_BUFFER ,0, 8 * 4 * len(_scene.spheres), self.sphereData)
+        # glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, self.sphereDataBuffer)
     
     def renderScene(self, _scene) -> None:
         """
@@ -140,6 +155,7 @@ class Engine:
   
         # make sure writing to image has finished before read
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT)
+        
 
         self.drawScreen()
 
