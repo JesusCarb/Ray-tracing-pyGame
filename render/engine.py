@@ -37,19 +37,19 @@ class Engine:
         # packing data into a 1024 image
         # center, radius, color
         # (x, y, z, radius), (r, g, b, _)
-        # sphereData = []
+        objectData = []
 
-        # for i in range(1024):
-        #     for attribute in range(8):
-        #         sphereData.append(0.0)
-        # self.sphereData = np.array(sphereData, dtype = np.float32)
+        for i in range(1024):
+            for attribute in range(8):
+                objectData.append(0.0)
+        self.objectData = np.array(objectData, dtype = np.float32)
 
         # initialize all at once
-        self.sphereData = np.zeros(8 * 1024, dtype = np.float32)
+        # self.objectData = np.zeros(8 * 1024, dtype = np.float32)
 
-        self.sphereDataTexture = glGenTextures(1)
+        self.objectDataTexture = glGenTextures(1)
         glActiveTexture(GL_TEXTURE1)
-        glBindTexture(GL_TEXTURE_2D, self.sphereDataTexture)
+        glBindTexture(GL_TEXTURE_2D, self.objectDataTexture)
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
@@ -57,7 +57,7 @@ class Engine:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
 
     
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 2, 1024, 0, GL_RGBA, GL_FLOAT, bytes(self.sphereData))
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 5, 1024, 0, GL_RGBA, GL_FLOAT, bytes(self.objectData))
     
     def createShader(self, vertexFilepath, fragmentFilepath) -> int:
         """
@@ -96,26 +96,49 @@ class Engine:
         # [ x1, y1, z1, .... x2, y2, z2]
 
         # filliing in from 0-6
-        self.sphereData[8 * i] = _sphere.center[0]
-        self.sphereData[8 * i + 1] = _sphere.center[1]
-        self.sphereData[8 * i + 2] = _sphere.center[2]
+        self.objectData[20 * i] = _sphere.center[0]
+        self.objectData[20 * i + 1] = _sphere.center[1]
+        self.objectData[20 * i + 2] = _sphere.center[2]
 
-        self.sphereData[8 * i + 3] = _sphere.radius
+        self.objectData[20 * i + 3] = _sphere.radius
 
-        self.sphereData[8 * i + 4] = _sphere.color[0]
-        self.sphereData[8 * i + 5] = _sphere.color[1]
-        self.sphereData[8 * i + 6] = _sphere.color[2]
+        self.objectData[20 * i + 4] = _sphere.color[0]
+        self.objectData[20 * i + 5] = _sphere.color[1]
+        self.objectData[20 * i + 6] = _sphere.color[2]
+
+    def recordPlane(self, i, _plane):
+    
+        self.objectData[20 * i + 0] = _plane.center[0]
+        self.objectData[20 * i + 1] = _plane.center[1]
+        self.objectData[20 * i + 2] = _plane.center[2]
+
+        self.objectData[20 * i + 3] = _plane.tangent[0]
+        self.objectData[20 * i + 4] = _plane.tangent[1]
+        self.objectData[20 * i + 5] = _plane.tangent[2]
+
+        self.objectData[20 * i + 6] = _plane.bitangent[0]
+        self.objectData[20 * i + 7] = _plane.bitangent[1]
+        self.objectData[20 * i + 8] = _plane.bitangent[2]
+
+        self.objectData[20 * i + 9] = _plane.normal[0]
+        self.objectData[20 * i + 10] = _plane.normal[1]
+        self.objectData[20 * i + 11] = _plane.normal[2]
 
 
+        self.objectData[20 * i + 12] = _plane.uMin
+        self.objectData[20 * i + 13] = _plane.uMax
+        self.objectData[20 * i + 14] = _plane.vMin
+        self.objectData[20 * i + 15] = _plane.vMax
 
-    def prepareScene(self, _scene):
+        self.objectData[20 * i + 16] = _plane.color[0]
+        self.objectData[20 * i + 17] = _plane.color[1]
+        self.objectData[20 * i + 18] = _plane.color[2]
 
+
+    def updateScene(self, _scene):
+
+        _scene.outDated = False
         glUseProgram(self.rayTracerShader)
-        
-        glUniform3fv(glGetUniformLocation(self.rayTracerShader, "viewer.position"), 1, _scene.camera.position)
-        glUniform3fv(glGetUniformLocation(self.rayTracerShader, "viewer.forwards"), 1, _scene.camera.forwards)
-        glUniform3fv(glGetUniformLocation(self.rayTracerShader, "viewer.right"), 1, _scene.camera.right)
-        glUniform3fv(glGetUniformLocation(self.rayTracerShader, "viewer.up"), 1, _scene.camera.up)
 
         glUniform1f(glGetUniformLocation(self.rayTracerShader, "sphereCount"), len(_scene.spheres))
 
@@ -128,12 +151,30 @@ class Engine:
             # glUniform3fv(glGetUniformLocation(self.rayTracerShader, f"spheres[{i}].center"), 1, _sphere.center)
             # glUniform1f(glGetUniformLocation(self.rayTracerShader, f"spheres[{i}].radius"), _sphere.radius)
             # glUniform3fv(glGetUniformLocation(self.rayTracerShader, f"spheres[{i}].color"), 1, _sphere.color)
+        glUniform1f(glGetUniformLocation(self.rayTracerShader, "planeCount"), len(_scene.planes))
         
+        for i,_plane in enumerate(_scene.planes):
+        # updates buffer
+             self.recordPlane(i + len(_scene.spheres), _plane)
         # updates texture that we're using to pass data/ for img not in use
         glActiveTexture(GL_TEXTURE1)
-        glBindTexture(GL_TEXTURE_2D, self.sphereDataTexture)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 2, 1024, 0, GL_RGBA, GL_FLOAT, bytes(self.sphereData))
-        glBindImageTexture(1, self.sphereDataTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)
+        glBindTexture(GL_TEXTURE_2D, self.objectDataTexture)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 5, 1024, 0, GL_RGBA, GL_FLOAT, bytes(self.objectData))
+
+    def prepareScene(self, _scene):
+
+        glUseProgram(self.rayTracerShader)
+        
+        glUniform3fv(glGetUniformLocation(self.rayTracerShader, "viewer.position"), 1, _scene.camera.position)
+        glUniform3fv(glGetUniformLocation(self.rayTracerShader, "viewer.forwards"), 1, _scene.camera.forwards)
+        glUniform3fv(glGetUniformLocation(self.rayTracerShader, "viewer.right"), 1, _scene.camera.right)
+        glUniform3fv(glGetUniformLocation(self.rayTracerShader, "viewer.up"), 1, _scene.camera.up)
+
+        if _scene.outDated:
+            self.updateScene(_scene)
+
+        glActiveTexture(GL_TEXTURE1)
+        glBindImageTexture(1, self.objectDataTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)
         # glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.sphereDataBuffer)
         # glBufferSubData(GL_SHADER_STORAGE_BUFFER ,0, 8 * 4 * len(_scene.spheres), self.sphereData)
         # glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, self.sphereDataBuffer)

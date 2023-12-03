@@ -20,6 +20,19 @@ struct Ray {
     vec3 direction;
 };
 
+struct Plane {
+    vec3 center;
+    vec3 tangent;
+    vec3 bitangent;
+    vec3 normal;
+    float uMin;
+    float uMax;
+    float vMin;
+    float vMax;
+    vec3 color;
+};
+
+
 struct RenderState{
 
     // tracks how far 
@@ -39,22 +52,25 @@ layout(rgba32f, binding = 0) uniform image2D img_output;
 
 // Scene Data
 uniform Camera viewer;
-//
 // uniform Sphere spheres[32];
-layout(rgba32f, binding = 1) readonly uniform image2D spheres;
+layout(rgba32f, binding = 1) readonly uniform image2D objects;
 
+uniform float sphereCount;
+uniform float planeCount;
 // layout(std430, binding = 1) readonly buffer sceneData
 // {
 //     Sphere[] spheres;
 // };
 
-uniform float sphereCount;
 
 vec3 rayColor(Ray ray);
 // tracks which info we get from ray hitting something
 RenderState hit(Ray ray, Sphere sphere, float tMin, float tMax, RenderState renderState);
+RenderState hit(Ray ray, Plane plane, float tMin, float tMax, RenderState renderState);
+
 Sphere unpackSphere(int index);
 
+Plane unpackPlane(int index);
 void main() {
 
     // GlobalInvocationID, gives integer vector of the pixels of the camera
@@ -105,6 +121,17 @@ vec3 rayColor(Ray ray)
         }
     }
 
+    for(int i = int(sphereCount); i < (sphereCount) + (planeCount); i++)
+    {
+        renderState = hit(ray, unpackPlane(i), 0.001, nearestHit, renderState);
+
+        if (renderState.hit)
+        {
+            nearestHit = renderState.t;
+            hitSomething = true;
+        }
+    }
+
     if (hitSomething)
     {
         color = renderState.color;
@@ -138,17 +165,75 @@ RenderState hit(Ray ray, Sphere sphere, float tMin, float tMax, RenderState rend
     return renderState;
 }
 
+RenderState hit(Ray ray, Plane plane, float tMin, float tMax, RenderState renderState)
+{
+    float denominator = dot(plane.normal, ray.direction);
+
+    if(denominator < 0.000001)
+    {
+        float t = dot(plane.center - ray.origin, plane.normal) / denominator;
+
+        if( t > tMin && t < tMax) {
+            vec3 testPoint = ray.origin + t * ray.direction;
+            vec3 testDirection = testPoint - plane.center;
+
+
+            float u = dot(testDirection, plane.tangent);
+            float v = dot(testDirection, plane.bitangent);
+
+            if(u > plane.uMin && u < plane.uMax && v > plane.vMin && v < plane.vMax)
+            {
+                renderState.t = t;
+                renderState.color = plane.color;
+                renderState.hit = true;
+                return renderState;
+            }
+        }
+    }
+    renderState.hit = false;
+    return renderState;
+
+}
 // for image buffer
 Sphere unpackSphere(int index)
 {
     Sphere sphere;
     // gets position
-    vec4 attributeChunk = imageLoad(spheres, ivec2(0, index));
+    vec4 attributeChunk = imageLoad(objects, ivec2(0, index));
     sphere.center = attributeChunk.xyz;
     sphere.radius = attributeChunk.w;
     // gets color
-    attributeChunk = imageLoad(spheres, ivec2(1, index));
+    attributeChunk = imageLoad(objects, ivec2(1, index));
     sphere.color = attributeChunk.xyz;
 
     return sphere;
+}
+
+Plane unpackPlane(int index)
+{    // gets position
+
+    // plane (cx cy cz tx ) (ty tz bx by ) (bz nx ny nz) (umin umax vmini vmax) (r g b _)
+    Plane plane;
+    vec4 attributeChunk = imageLoad(objects, ivec2(0, index));
+    plane.center = attributeChunk.xyz;
+    plane.tangent.x = attributeChunk.w;
+    // gets color
+    attributeChunk = imageLoad(objects, ivec2(1, index));
+    plane.tangent.yz = attributeChunk.xy;
+    plane.bitangent.xy = attributeChunk.zw;
+
+    attributeChunk = imageLoad(objects, ivec2(2, index));
+    plane.bitangent.z = attributeChunk.x;
+    plane.normal = attributeChunk.yzw;
+
+    attributeChunk = imageLoad(objects, ivec2(3, index));
+    plane.uMin = attributeChunk.x;
+    plane.uMax = attributeChunk.y;
+    plane.vMin = attributeChunk.z;
+    plane.vMax = attributeChunk.w;
+
+    attributeChunk = imageLoad(objects, ivec2(4, index));
+    plane.color = attributeChunk.xyz;
+
+    return plane;
 }
