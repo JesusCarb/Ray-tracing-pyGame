@@ -26,11 +26,23 @@ class Engine:
         self.screenQuad = screen_quad.ScreenQuad()
 
         self.colorBuffer = material.Material(self.screenWidth, self.screenHeight)
-
+        self.createResourceMemory()
         self.shader = self.createShader("shaders/frameBufferVertex.glsl",
                                         "shaders/frameBufferFragment.glsl")
         
         self.rayTracerShader = self.createComputeShader("shaders/rayTracer.glsl")
+    def createResourceMemory(self):
+        # packing data into a 1024 image
+        # center, radius, color
+        # (x, y, z, radius), (r, g, b, _)
+        sphereData = []
+
+        self.sphereData = np.zeros(8 * 1024, dtype = np.float32)
+
+        self.sphereDataBuffer = glGenBuffers(1)
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.sphereDataBuffer)
+        glBufferData(GL_SHADER_STORAGE_BUFFER , self.sphereData.nbytes,self.sphereData, GL_DYNAMIC_READ)
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, self.sphereDataBuffer)
     
     def createShader(self, vertexFilepath, fragmentFilepath) -> int:
         """
@@ -62,18 +74,68 @@ class Engine:
         
         return shader
 
-    def renderScene(self) -> None:
+    # passes all the information to raytrace/compute shader
+    def recordSphere(self, i, _sphere): 
+
+        # sphere formating
+        # [ x1, y1, z1, .... x2, y2, z2]
+
+        # filliing in from 0-6
+        self.sphereData[8 * i] = _sphere.center[0]
+        self.sphereData[8 * i + 1] = _sphere.center[1]
+        self.sphereData[8 * i + 2] = _sphere.center[2]
+
+        self.sphereData[8 * i + 3] = _sphere.radius
+
+        self.sphereData[8 * i + 4] = _sphere.color[0]
+        self.sphereData[8 * i + 5] = _sphere.color[1]
+        self.sphereData[8 * i + 6] = _sphere.color[2]
+
+
+
+    def prepareScene(self, _scene):
+
+        glUseProgram(self.rayTracerShader)
+        
+        glUniform3fv(glGetUniformLocation(self.rayTracerShader, "viewer.position"), 1, _scene.camera.position)
+        glUniform3fv(glGetUniformLocation(self.rayTracerShader, "viewer.forwards"), 1, _scene.camera.forwards)
+        glUniform3fv(glGetUniformLocation(self.rayTracerShader, "viewer.right"), 1, _scene.camera.right)
+        glUniform3fv(glGetUniformLocation(self.rayTracerShader, "viewer.up"), 1, _scene.camera.up)
+
+        glUniform1f(glGetUniformLocation(self.rayTracerShader, "sphereCount"), len(_scene.spheres))
+
+        # looping through spheres and passing in sphere info
+        # passes sphers as uniforms
+        for i,_sphere in enumerate(_scene.spheres):
+            # updates buffer
+            self.recordSphere(i, _sphere)
+            
+            # glUniform3fv(glGetUniformLocation(self.rayTracerShader, f"spheres[{i}].center"), 1, _sphere.center)
+            # glUniform1f(glGetUniformLocation(self.rayTracerShader, f"spheres[{i}].radius"), _sphere.radius)
+            # glUniform3fv(glGetUniformLocation(self.rayTracerShader, f"spheres[{i}].color"), 1, _sphere.color)
+        
+        # updates texture that we're using to pass data/ for img not in use
+        # glActiveTexture(GL_TEXTURE1)
+        # glBindTexture(GL_TEXTURE_2D, self.sphereDataTexture)
+        # glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 2, 1024, 0, GL_RGBA, GL_FLOAT, bytes(self.sphereData))
+        # glBindImageTexture(1, self.sphereDataTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.sphereDataBuffer)
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER ,0, 8 * 4 * len(_scene.spheres), self.sphereData)
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, self.sphereDataBuffer)
+    
+    def renderScene(self, _scene) -> None:
         """
             Draw all objects in the scene
         """
         # using the ray tracer to calculate color of each picture of screen
         glUseProgram(self.rayTracerShader)
        
+        self.prepareScene(_scene)
         # see material file
         self.colorBuffer.writeTo()
         
         # sets gpu to work as syncronously as possible to render 2d image on screen
-        glDispatchCompute(int(self.screenWidth), int(self.screenHeight), 1)
+        glDispatchCompute(int(self.screenWidth/8), int(self.screenHeight/8), 1)
         # glDispatchCompute(int(self.screenWidth/8), int(self.screenHeight/8), 1)
   
         # make sure writing to image has finished before read

@@ -1,5 +1,6 @@
 from config import *
 import engine
+import scene
 
 class App:
     """
@@ -14,6 +15,7 @@ class App:
         self.setupPygame()
 
         self.graphicsEngine = engine.Engine(self.screenWidth, self.screenHeight)
+        self.scene = scene.Scene()
 
         self.setupTimer()
 
@@ -52,8 +54,8 @@ class App:
                     if (event.key == pg.K_ESCAPE):
                         running = False
             #every frame
-            #render
-            self.graphicsEngine.renderScene()
+            #renders scene
+            self.graphicsEngine.renderScene(self.scene)
 
             #timing
             self.calculateFramerate()
