@@ -30,8 +30,9 @@ struct Plane {
     float uMax;
     float vMin;
     float vMax;
-    // vec3 color;
-    // float roughness;
+
+    vec3 color;
+    float roughness;
 
     float material;
 };
@@ -44,7 +45,7 @@ struct RenderState{
     // color of the hit
     vec3 color;
     // if hit
-    vec3 emissive;
+    // vec3 emissive;
     vec3 position;
     vec3 normal;
     bool hit;
@@ -128,7 +129,7 @@ void main() {
 
         // ray tracer writes color on buffer
         vec3 pixel = vec3(1.0);
-        for (int bounce = 0; bounce < 4; bounce++)
+        for (int bounce = 0; bounce < 100; bounce++)
         {
             RenderState renderState = trace(ray);
             // if dind't hit anything dont reflect
@@ -137,7 +138,8 @@ void main() {
                 break;
             }
             // unpack color
-            pixel = pixel * renderState.color + renderState.emissive;
+            // pixel = pixel * renderState.color + renderState.emissive;
+            pixel = pixel * renderState.color;
 
             // set up ray for next trace
             ray.origin = renderState.position;
@@ -147,9 +149,9 @@ void main() {
             ).xyz;
 
             ray.direction = reflect(ray.direction, renderState.normal);
-            ray.direction = normalize(ray.direction + renderState.roughness * variation);
+            // ray.direction = normalize(ray.direction + renderState.roughness * variation);
             // ray.direction = normalize(ray.direction + renderState.roughness);
-            // ray.direction = normalize(ray.direction);
+            ray.direction = normalize(ray.direction);
             
         }
         finalColor = finalColor + .5 * pixel;
@@ -215,7 +217,7 @@ RenderState hit(Ray ray, Sphere sphere, float tMin, float tMax, RenderState rend
             renderState.t = t;
             renderState.color = sphere.color;
             renderState.roughness = sphere.roughness;
-            renderState.emissive = vec3(0);
+            // renderState.emissive = vec3(0);
             renderState.hit = true;
 
             return renderState;
@@ -246,20 +248,29 @@ RenderState hit(Ray ray, Plane plane, float tMin, float tMax, RenderState render
                 u = (u - plane.uMin) / (plane.uMax - plane.uMin);
                 v = (v - plane.vMin)/ (plane.vMax - plane.vMin);
 
-                Material material = sample_material(plane.material, u, v);
+                vec3 alb = vec3(.1,.1,.1);
+                ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
 
+                // float lambertianReflectance = max(0, dot(normalize(plane.normal), normalize(ray.direction)));
+                // Material material = sample_material(plane.material, u, v);
+                // vec3 diffuseColor = 0.5 + lambertianReflectance  * vec3(.5,.5,.5) + 1.0;
+
+                vec3 dir = renderState.normal;
+                vec3 finalColor = 0.7 * plane.color;
+            
                 renderState.position = testPoint;
                 // points from center of sphere towards position
                 renderState.normal = plane.normal;
                 renderState.t = t;
-                renderState.color = material.albedo;
-                renderState.emissive = material.emissive;
-                renderState.roughness = max(0.0, 1.0 - material.gloss);
+                renderState.color = finalColor;
+                // renderState.color = material.albedo;
+                // renderState.emissive = material.emissive;
+                // renderState.roughness = max(0.0, 1.0 - material.gloss);
                 mat3 TBN = mat3(plane.tangent, plane.bitangent, plane.normal);
-                renderState.normal = TBN * material.normal;
+                // renderState.normal = TBN * material.normal;
 
                 renderState.hit = true;
-                // renderState.roughness = plane.roughness;
+                renderState.roughness = plane.roughness;
 
                 return renderState;
             }
@@ -310,9 +321,9 @@ Plane unpackPlane(int index)
     plane.vMax = attributeChunk.w;
 
     attributeChunk = imageLoad(objects, ivec2(4, index));
-    plane.material = attributeChunk.x;
-    // plane.color = attributeChunk.xyz;
-    // plane.roughness = attributeChunk.w;
+    // plane.material = attributeChunk.x;
+    plane.color = attributeChunk.xyz;
+    plane.roughness = attributeChunk.w;
     return plane;
 }
 
@@ -322,7 +333,7 @@ Material sample_material(float index, float u, float v)
 
     // getting data from mega texture, split into 1024 cause compute shader needs to be done in ints
     material.albedo = imageLoad(megaTexture, ivec2(floor(1024 * u), floor(1024 * (v + index)))).rgb;
-    material.emissive = imageLoad(megaTexture, ivec2(floor(1024 * (u + 1)), floor(1024 * (v + index)))).rgb;
+    // material.emissive = imageLoad(megaTexture, ivec2(floor(1024 * (u + 1)), floor(1024 * (v + index)))).rgb;
     material.gloss = imageLoad(megaTexture, ivec2(floor(1024*(u + 2)), floor(1024 * (v + index)))).r;
     material.normal = imageLoad(megaTexture, ivec2(floor(1024*(u + 3)), floor(1024 * (v + index)))).rgb;
     material.normal = 2.0 * material.normal - vec3(1.0);

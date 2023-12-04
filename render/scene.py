@@ -22,8 +22,10 @@ class Scene:
                 vMin=v_min,
                 vMax=v_max,
                 center=center,
-                color=color,
-                roughness=roughness,
+                color = color,
+                # material_index= color
+                # color=color,
+                roughness=roughness
             )
             self.planes.append(new_plane)
 
@@ -41,71 +43,71 @@ class Scene:
         # list of spheres, 32 in this case, random positions, colors and attributes
         # all in front of cam
         self.spheres = [
-            sphere.Sphere(
-                center = [
-                    np.random.uniform(low = 3.0, high = 10.0),
-                    np.random.uniform(low = -5.0, high = 5.0),
-                    np.random.uniform(low = -5.0, high = 5.0)
-                ],
-                radius = np.random.uniform(low = 0.1, high = 2.0),
-                color = [
-                    np.random.uniform(low = 0.3, high = 1.0),
-                    np.random.uniform(low = 0.3, high = 1.0),
-                    np.random.uniform(low = 0.3, high = 1.0)
-                ],
-                roughness = np.random.uniform(low = 0.1, high = 0.9)
-            ) for i in range(16)
-
             # sphere.Sphere(
             #     center = [
-            #         0,1,-3
+            #         np.random.uniform(low = 3.0, high = 10.0),
+            #         np.random.uniform(low = -5.0, high = 5.0),
+            #         np.random.uniform(low = -5.0, high = 5.0)
             #     ],
-            #     radius = 2.0,
+            #     radius = np.random.uniform(low = 0.1, high = 2.0),
             #     color = [
-            #         .9,.9,.9
+            #         np.random.uniform(low = 0.3, high = 1.0),
+            #         np.random.uniform(low = 0.3, high = 1.0),
+            #         np.random.uniform(low = 0.3, high = 1.0)
             #     ],
-            #     roughness = .1
-            # )
+            #     roughness = np.random.uniform(low = 0.1, high = 0.9)
+            # ) for i in range(0)
+
+            sphere.Sphere(
+                center = [
+                    0,1,-3
+                ],
+                radius = 2.0,
+                color = [
+                    .9,.9,.9
+                ],
+                roughness = 1
+            )
         ]
 
-        self.planes =  [
-            plane.Plane(
-                normal = [0, 0, 1],
-                tangent = [1, 0, 0],
-                bitangent = [0, 1, 0],
-                uMin = -.5,
-                uMax = .5,
-                vMin = -.5,
-                vMax = .5,
-                center = [i % 3, i // 3, -1],
-                # color = randomColor(),
-                material_index= i
-            )for i in range(9)
-        ]
-        # self.planes = []
+        # self.planes =  [
+        #     plane.Plane(
+        #         normal = [0, 0, 1],
+        #         tangent = [1, 0, 0],
+        #         bitangent = [0, 1, 0],
+        #         uMin = -.5,
+        #         uMax = .5,
+        #         vMin = -.5,
+        #         vMax = .5,
+        #         center = [i % 3, i // 3, -1],
+        #         # color = randomColor(),
+        #         material_index= i
+        #     )for i in range(9)
+        # ]
+        self.planes = []
         
 
-        # planes = add_plane(self, [0, 0, 1], [1, 0, 0], [0, 1, 0], -11, 11, -11, 11, [0, 0, -10], [.8,.8,.8]  , .8)
+        # planes = add_plane(self, [0, 0, 1], [1, 0, 0], [0, 1, 0], -11, 11, -11, 11, [0, 0, -10], 7)
 
-        self.camera = camera.Camera(
-            position = [-1, 0, 0]
-        )
+        # self.camera = camera.Camera(
+        #     position = [-1, 0, 0]
+        # )
         self.outDated = True
         
         
         #bottom bottom top
-        # planes = add_plane(self, [0, 0, 1], [1, 0, 0], [0, 1, 0], -11, 11, -11, 11, [0, 0, -10], [1,1,1]  , .8)
-        # planes = add_plane(self, [0, 0, -1], [1, 0, 0], [0, 1, 0], -11, 11, -11, 11, [0, 0, 10], [1,1,1]  , .8)
+        planes = add_plane(self, [0, 0, 1], [1, 0, 0], [0, 1, 0], -11, 11, -11, 11, [0, 0, -10], [.73,.73,.73], .9)
+        planes = add_plane(self, [0, 0, -1], [1, 0, 0], [0, 1, 0], -11, 11, -11, 11, [0, 0, 10],  [.73,.73,.73],.9)
         
-        # #back
-        # planes = add_plane(self, [-1, 0, 0], [0, 1, 0], [0, 0, 1], -11, 11, -11, 11,[10, 0, 0], [1,1,1]   , .8)
+        #back
+        planes = add_plane(self, [-1, 0, 0], [0, 1, 0], [0, 0, 1], -11, 11, -11, 11,[10, 0, 0],  [.73,.73,.73],.9)
         
-        # # rightleft
-        # planes = add_plane(self, [0, -1, 0], [1, 0, 0], [0, 0, 1], -11, 11, -11, 11, [0, 10, 0], [0,1,0] , .8)
-        # planes = add_plane(self, [0, 1, 0], [1, 0, 0], [0, 0, -1], -11, 11, -11, 11, [0, -10, 0], [1,0,0] , .8)
-        # self.camera = camera.Camera(
-        #     position = [-10, 0, 0]
-        # )
+        # rightleft
+        planes = add_plane(self, [0, -1, 0], [1, 0, 0], [0, 0, 1], -11, 11, -11, 11, [0, 10, 0],  [.12,.45,.15], .9)
+        planes = add_plane(self, [0, 1, 0], [1, 0, 0], [0, 0, -1], -11, 11, -11, 11, [0, -10, 0], [.65,.05,.05], .9)
+        self.camera = camera.Camera(
+            position = [-10, 0, 0]
+        )
 
         # self.planes =  [
         #     # plane.Plane(

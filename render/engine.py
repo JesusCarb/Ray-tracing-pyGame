@@ -29,7 +29,7 @@ class Engine:
         self.colorBuffer = material.Material(self.screenWidth, self.screenHeight)
         
         self.createResourceMemory()
-        self.createNoiseTexture()
+        # self.createNoiseTexture()
         self.createMegaTexture()
         self.shader = self.createShader("shaders/frameBufferVertex.glsl",
                                         "shaders/frameBufferFragment.glsl")
@@ -186,13 +186,13 @@ class Engine:
         self.objectData[20 * i + 14] = _plane.vMin
         self.objectData[20 * i + 15] = _plane.vMax
 
-        # self.objectData[20 * i + 16] = _plane.color[0]
-        # self.objectData[20 * i + 17] = _plane.color[1]
-        # self.objectData[20 * i + 18] = _plane.color[2]
+        self.objectData[20 * i + 16] = _plane.color[0]
+        self.objectData[20 * i + 17] = _plane.color[1]
+        self.objectData[20 * i + 18] = _plane.color[2]
 
-        # self.objectData[20 * i + 19] = _plane.roughness
+        self.objectData[20 * i + 19] = _plane.roughness
 
-        self.objectData[20 * i + 16] = _plane.material_index
+        # self.objectData[20 * i + 16] = _plane.material_index
 
     def updateScene(self, _scene):
 
@@ -234,8 +234,8 @@ class Engine:
 
         glActiveTexture(GL_TEXTURE1)
         glBindImageTexture(1, self.objectDataTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)
-        glActiveTexture(GL_TEXTURE2)
-        glBindImageTexture(2, self.noiseTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)
+        # glActiveTexture(GL_TEXTURE2)
+        # glBindImageTexture(2, self.noiseTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)
         glActiveTexture(GL_TEXTURE3)
         glBindImageTexture(3, self.megaTexture.texture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)        # glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.sphereDataBuffer)
         # glBufferSubData(GL_SHADER_STORAGE_BUFFER ,0, 8 * 4 * len(_scene.spheres), self.sphereData)

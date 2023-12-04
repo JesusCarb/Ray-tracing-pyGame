@@ -57,7 +57,7 @@ class App:
             #every frame
             #renders scene
             self.handleKeys()
-            self.handleMouse()
+            # self.handleMouse()
             #timing
             self.graphicsEngine.renderScene(self.scene)
 
