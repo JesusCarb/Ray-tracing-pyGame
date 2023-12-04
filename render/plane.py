@@ -10,7 +10,7 @@ class Plane:
             normal: np.ndarray, tangent: np.ndarray, 
             bitangent: np.ndarray, uMin: float, uMax: float, 
             vMin: float, vMax: float, 
-            center: np.ndarray, color: np.ndarray, roughness: float):
+            center: np.ndarray, material_index):
         """
             Create a new plane
 
@@ -31,5 +31,8 @@ class Plane:
         self.vMin = vMin
         self.vMax = vMax
         self.center = np.array(center, dtype=np.float32)
-        self.color = np.array(color, dtype=np.float32)
-        self.roughness = roughness
+        
+        # self.color = np.array(color, dtype=np.float32)
+        # self.roughness = roughness
+
+        self.material_index = material_index    

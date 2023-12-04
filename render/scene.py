@@ -54,7 +54,7 @@ class Scene:
                     np.random.uniform(low = 0.3, high = 1.0)
                 ],
                 roughness = np.random.uniform(low = 0.1, high = 0.9)
-            ) for i in range(10)
+            ) for i in range(16)
 
             # sphere.Sphere(
             #     center = [
@@ -68,15 +68,29 @@ class Scene:
             # )
         ]
 
-
-        self.planes = []
+        self.planes =  [
+            plane.Plane(
+                normal = [0, 0, 1],
+                tangent = [1, 0, 0],
+                bitangent = [0, 1, 0],
+                uMin = -.5,
+                uMax = .5,
+                vMin = -.5,
+                vMax = .5,
+                center = [i % 3, i // 3, -1],
+                # color = randomColor(),
+                material_index= i
+            )for i in range(9)
+        ]
+        # self.planes = []
         
 
-        planes = add_plane(self, [0, 0, 1], [1, 0, 0], [0, 1, 0], -11, 11, -11, 11, [0, 0, -10], [.8,.8,.8]  , .8)
+        # planes = add_plane(self, [0, 0, 1], [1, 0, 0], [0, 1, 0], -11, 11, -11, 11, [0, 0, -10], [.8,.8,.8]  , .8)
 
         self.camera = camera.Camera(
-            position = [-2, 0, 0]
+            position = [-1, 0, 0]
         )
+        self.outDated = True
         
         
         #bottom bottom top
@@ -93,7 +107,6 @@ class Scene:
         #     position = [-10, 0, 0]
         # )
 
-        self.outDated = True
         # self.planes =  [
         #     # plane.Plane(
         #     #     normal = [0, 0, 1],
@@ -114,9 +127,33 @@ class Scene:
 # # self, normal, tangent, bitangent, u_min, u_max, v_min, v_max, center, color, roughness
         # self.planes.add_plane([0, 0, 1], [1, 0, 0], [0, 1, 0], -10, 10, -10, 10, [0, 0, 7], [0,1,0] , .5)
 
-
-
+    def move_player(self, forwardsSpeed: float, rightSpeed: float) -> None:
+        """
+        attempt to move the player with the given speed
+        """
+        
+        dPos = forwardsSpeed * self.camera.forwards + rightSpeed * self.camera.right
+        
+        self.camera.position[0] += dPos[0]
+        self.camera.position[1] += dPos[1]
     
+    def spin_player(self, dAngle: list[float, float]) -> None:
+        """
+            shift the player's direction by the given amount, in degrees
+        """
+        self.camera.theta += dAngle[0]
+        if (self.camera.theta < 0):
+            self.camera.theta += 360
+        elif (self.camera.theta > 360):
+            self.camera.theta -= 360
+        
+        self.camera.phi += dAngle[1]
+        if (self.camera.phi < -89):
+            self.camera.phi = -89
+        elif (self.camera.phi > 89):
+            self.camera.phi = 89
+        
+        self.camera.recalculateVectors()
 
 
 

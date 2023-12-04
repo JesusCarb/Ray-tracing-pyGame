@@ -30,6 +30,7 @@ class App:
         pg.display.gl_set_attribute(pg.GL_CONTEXT_PROFILE_MASK,
                                     pg.GL_CONTEXT_PROFILE_CORE)
         pg.display.set_mode((self.screenWidth, self.screenHeight), pg.OPENGL|pg.DOUBLEBUF)
+        pg.mouse.set_visible(False)
     
     def setupTimer(self) -> None:
         """
@@ -55,12 +56,44 @@ class App:
                         running = False
             #every frame
             #renders scene
+            self.handleKeys()
+            self.handleMouse()
+            #timing
             self.graphicsEngine.renderScene(self.scene)
 
-            #timing
             self.calculateFramerate()
         self.quit()
-    
+    def handleKeys(self):
+        """
+            handle the current key state
+        """
+
+        rate = self.frameTime / 16
+
+        keys = pg.key.get_pressed()
+        if keys[pg.K_w]:
+            self.scene.move_player(0.1 * rate, 0)
+        elif keys[pg.K_a]:
+            self.scene.move_player(0, -0.1 * rate)
+        elif keys[pg.K_s]:
+            self.scene.move_player(-.1* rate, 0)
+        elif keys[pg.K_d]:
+            self.scene.move_player(0,0.1 * rate)
+
+
+    def handleMouse(self) -> None:
+        """
+            Handle mouse movement.
+        """
+        rate = self.frameTime / 5
+        (x,y) = pg.mouse.get_pos()
+        theta_increment = rate * ((self.screenWidth // 2) - x)
+        phi_increment = rate * ((self.screenHeight// 2) - y)
+
+        self.scene.spin_player((theta_increment, phi_increment))
+        pg.mouse.set_pos((self.screenWidth // 2 , self.screenHeight // 2 ))
+ 
+
     def calculateFramerate(self) -> None:
         """
             Calculate the framerate of the program.

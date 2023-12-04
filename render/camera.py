@@ -33,6 +33,6 @@ class Camera:
         )
 
         # getting right vector
-        self.right = pyrr.vector3.cross(self.forwards, np.array([0,0,1],dtype=np.float32))
+        self.right = pyrr.vector.normalize(pyrr.vector3.cross(self.forwards, np.array([0,0,1],dtype=np.float32)))
         # getting up vector
-        self.up = pyrr.vector3.cross(self.right, self.forwards)
+        self.up = pyrr.vector.normalize(pyrr.vector3.cross(self.right, self.forwards))

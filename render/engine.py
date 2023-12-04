@@ -39,8 +39,8 @@ class Engine:
     def createResourceMemory(self):
         # packing data into a 1024 image
         # center, radius, color
-        # (x, y, z, radius), (r, g, b, rpughness)
-        # (cx cy cz tx) (ty tz bx by) ( bz nx ny nz) (umin umax vmin vmax) (r g b roughness)
+        # (x, y, z, radius), (r, g, b, roughness) (----) (----) (----)
+        # (cx cy cz tx) (ty tz bx by) ( bz nx ny nz) (umin umax vmin vmax) (material)
         objectData = []
 
         for object in range(1024):
@@ -186,13 +186,13 @@ class Engine:
         self.objectData[20 * i + 14] = _plane.vMin
         self.objectData[20 * i + 15] = _plane.vMax
 
-        self.objectData[20 * i + 16] = _plane.color[0]
-        self.objectData[20 * i + 17] = _plane.color[1]
-        self.objectData[20 * i + 18] = _plane.color[2]
+        # self.objectData[20 * i + 16] = _plane.color[0]
+        # self.objectData[20 * i + 17] = _plane.color[1]
+        # self.objectData[20 * i + 18] = _plane.color[2]
 
-        self.objectData[20 * i + 19] = _plane.roughness
+        # self.objectData[20 * i + 19] = _plane.roughness
 
-
+        self.objectData[20 * i + 16] = _plane.material_index
 
     def updateScene(self, _scene):
 
@@ -236,8 +236,8 @@ class Engine:
         glBindImageTexture(1, self.objectDataTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)
         glActiveTexture(GL_TEXTURE2)
         glBindImageTexture(2, self.noiseTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)
-        
-        # glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.sphereDataBuffer)
+        glActiveTexture(GL_TEXTURE3)
+        glBindImageTexture(3, self.megaTexture.texture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)        # glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.sphereDataBuffer)
         # glBufferSubData(GL_SHADER_STORAGE_BUFFER ,0, 8 * 4 * len(_scene.spheres), self.sphereData)
         # glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, self.sphereDataBuffer)
     
@@ -258,7 +258,7 @@ class Engine:
   
         # make sure writing to image has finished before read
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT)
-        glBindImageTexture(0,0,0,GL_FALSE,0, GL_WRITE_ONLY, GL_RGBA32F)
+        # glBindImageTexture(0,0,0,GL_FALSE,0, GL_WRITE_ONLY, GL_RGBA32F)
 
         self.drawScreen()
 
@@ -269,9 +269,11 @@ class Engine:
         
         # glActiveTexture(GL_TEXTURE0)
         # glBindTexture(GL_TEXTURE_2D, self.colorBuffer)
-        glBindTexture(GL_TEXTURE_2D, self.megaTexture.texture)
+        # glBindTexture(GL_TEXTURE_2D, self.megaTexture.texture)
         #under material
-        # self.colorBuffer.readFrom()
+
+        self.colorBuffer.readFrom()
+        
         #under mesh
         self.screenQuad.draw()
         pg.display.flip()
