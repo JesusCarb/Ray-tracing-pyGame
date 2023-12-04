@@ -1,6 +1,7 @@
 from config import *
 import screen_quad
 import material
+import megatexture
 
 class Engine:
     """
@@ -29,6 +30,7 @@ class Engine:
         
         self.createResourceMemory()
         self.createNoiseTexture()
+        self.createMegaTexture()
         self.shader = self.createShader("shaders/frameBufferVertex.glsl",
                                         "shaders/frameBufferFragment.glsl")
         
@@ -97,7 +99,19 @@ class Engine:
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F,
                     4 * self.screenWidth, self.screenHeight,
                     0, GL_RGBA, GL_FLOAT, bytes(self.noiseData))
-        
+    def createMegaTexture(self) -> None:
+        """
+            Load all the textures.
+        """
+
+        filenames = [
+            "AlienArchitecture", "AlternatingColumnsConcreteTile", "BiomechanicalPlumbing", 
+            "CarvedStoneFloorCheckered", "ChemicalStrippedConcrete", "ClayBrick",
+            "CrumblingBrickWall", "DiamondSquareFlourishTiles", "EgyptianHieroglyphMetal"
+        ]
+
+        self.megaTexture = megatexture.MegaTexture(filenames)
+
     def createShader(self, vertexFilepath, fragmentFilepath) -> int:
         """
             Read source code, compile and link shaders.
@@ -244,7 +258,7 @@ class Engine:
   
         # make sure writing to image has finished before read
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT)
-        
+        glBindImageTexture(0,0,0,GL_FALSE,0, GL_WRITE_ONLY, GL_RGBA32F)
 
         self.drawScreen()
 
@@ -252,9 +266,12 @@ class Engine:
         #switches to regular shader, 
         glUseProgram(self.shader)
         glBindFramebuffer(GL_FRAMEBUFFER, 0)
-
+        
+        # glActiveTexture(GL_TEXTURE0)
+        # glBindTexture(GL_TEXTURE_2D, self.colorBuffer)
+        glBindTexture(GL_TEXTURE_2D, self.megaTexture.texture)
         #under material
-        self.colorBuffer.readFrom()
+        # self.colorBuffer.readFrom()
         #under mesh
         self.screenQuad.draw()
         pg.display.flip()

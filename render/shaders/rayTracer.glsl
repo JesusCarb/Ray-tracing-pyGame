@@ -14,7 +14,6 @@ struct Camera {
     vec3 forwards;
     vec3 right;
     vec3 up;
-
 };
 
 struct Ray {
@@ -85,9 +84,8 @@ void main() {
     // imageSize(returns size of screen as ivec2) as length/width
     ivec2 screen_size = imageSize(img_output);
 
-    // sampling for aa
     vec3 finalColor = vec3(0.0);
-
+    // sampling for aa
     for (int i = 0; i < 4; i++)
     {
         vec2 screenDeflection = imageLoad(
@@ -115,8 +113,8 @@ void main() {
 
         // ray tracer writes color on buffer
         vec3 pixel = vec3(1.0);
-        
-        for (int bounce = 0; bounce < 10; bounce++)
+        // loop more for aliasing
+        for (int bounce = 0; bounce < 4; bounce++)
         {
             RenderState renderState = trace(ray);
             // if dind't hit anything dont reflect
@@ -136,10 +134,11 @@ void main() {
 
             ray.direction = reflect(ray.direction, renderState.normal);
             ray.direction = normalize(ray.direction + renderState.roughness * variation);
+            // ray.direction = normalize(ray.direction + renderState.roughness);
             // ray.direction = normalize(ray.direction);
             
         }
-        finalColor = finalColor + 0.25 * pixel;
+        finalColor = finalColor + .25 * pixel;
 
     }
 
@@ -215,14 +214,13 @@ RenderState hit(Ray ray, Plane plane, float tMin, float tMax, RenderState render
 {
     float denominator = dot(plane.normal, ray.direction);
 
-    if(denominator < 0.000001)
+    if(denominator < -0.000001)
     {
         float t = dot(plane.center - ray.origin, plane.normal) / denominator;
 
         if( t > tMin && t < tMax) {
             vec3 testPoint = ray.origin + t * ray.direction;
             vec3 testDirection = testPoint - plane.center;
-
 
             float u = dot(testDirection, plane.tangent);
             float v = dot(testDirection, plane.bitangent);
@@ -292,3 +290,4 @@ Plane unpackPlane(int index)
 
     return plane;
 }
+
