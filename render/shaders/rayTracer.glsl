@@ -5,6 +5,8 @@ struct Sphere {
     vec3 center;
     float radius;
     vec3 color;
+    float roughness;
+
 };
 
 struct Camera {
@@ -30,6 +32,7 @@ struct Plane {
     float vMin;
     float vMax;
     vec3 color;
+    float roughness;
 };
 
 
@@ -37,12 +40,14 @@ struct RenderState{
 
     // tracks how far 
     float t;
-
     // color of the hit
     vec3 color;
-
     // if hit
     bool hit;
+
+    vec3 position;
+    vec3 normal;
+    float roughness;
 };
 
 // input/output
@@ -54,6 +59,7 @@ layout(rgba32f, binding = 0) uniform image2D img_output;
 uniform Camera viewer;
 // uniform Sphere spheres[32];
 layout(rgba32f, binding = 1) readonly uniform image2D objects;
+layout(rgba32f, binding = 2) readonly uniform image2D noise;
 
 uniform float sphereCount;
 uniform float planeCount;
@@ -63,7 +69,7 @@ uniform float planeCount;
 // };
 
 
-vec3 rayColor(Ray ray);
+RenderState trace(Ray ray);
 // tracks which info we get from ray hitting something
 RenderState hit(Ray ray, Sphere sphere, float tMin, float tMax, RenderState renderState);
 RenderState hit(Ray ray, Plane plane, float tMin, float tMax, RenderState renderState);
@@ -79,65 +85,100 @@ void main() {
     // imageSize(returns size of screen as ivec2) as length/width
     ivec2 screen_size = imageSize(img_output);
 
-    // 0*2 -screensize/ screensize = -1
-    // 200 * 2 = 400 - (800) / 800 = -.5
-    // gets point offset on the quad from either left, right, up, down of the camera
-    // and normalizes it from 0 - 1
-    // we then use this to calculate the direction of rays, camera and this point give us ray
-    // normalize based on x cause it's the larger dimention
-    float horizontalCoefficient = ((float(pixel_coords.x) * 2 - screen_size.x) / screen_size.x);
-    float verticalCoefficient = ((float(pixel_coords.y) * 2 - screen_size.y) / screen_size.x);
+    // sampling for aa
+    vec3 finalColor = vec3(0.0);
 
-    // define camera sphere and rays
+    for (int i = 0; i < 4; i++)
+    {
+        vec2 screenDeflection = imageLoad(
+            noise,
+            ivec2(pixel_coords.x + i * screen_size.x, pixel_coords.y)
+        ).xy;
 
-    Ray ray;
-    ray.origin = viewer.position;
-    ray.direction = viewer.forwards + horizontalCoefficient * viewer.right + verticalCoefficient * viewer.up;
+        // 0*2 -screensize/ screensize = -1
+        // 200 * 2 = 400 - (800) / 800 = -.5
+        // gets point offset on the quad from either left, right, up, down of the camera
+        // and normalizes it from 0 - 1
+        // we then use this to calculate the direction of rays, camera and this point give us ray
+        // normalize based on x cause it's the larger dimention
+        float horizontalCoefficient = (float(pixel_coords.x) + screenDeflection.x);
+        horizontalCoefficient = ((float(pixel_coords.x) * 2 - screen_size.x) / screen_size.x);
+            
+        float verticalCoefficient = (float(pixel_coords.y) + screenDeflection.y);
+        verticalCoefficient = ((float(pixel_coords.y) * 2 - screen_size.y) / screen_size.x);
 
-    // ray tracer writes color on buffer
-    vec3 pixel = rayColor(ray);
-    
+        // define camera sphere and rays
+
+        Ray ray;
+        ray.origin = viewer.position;
+        ray.direction = viewer.forwards + horizontalCoefficient * viewer.right + verticalCoefficient * viewer.up;
+
+        // ray tracer writes color on buffer
+        vec3 pixel = vec3(1.0);
+        
+        for (int bounce = 0; bounce < 10; bounce++)
+        {
+            RenderState renderState = trace(ray);
+            // if dind't hit anything dont reflect
+            if(!renderState.hit)
+            {
+                break;
+            }
+            // unpack color
+            pixel = pixel * renderState.color;
+
+            // set up ray for next trace
+            ray.origin = renderState.position;
+            vec3 variation = imageLoad(
+                noise,
+                ivec2(pixel_coords.x + bounce * screen_size.x, pixel_coords.y)
+            ).xyz;
+
+            ray.direction = reflect(ray.direction, renderState.normal);
+            ray.direction = normalize(ray.direction + renderState.roughness * variation);
+            // ray.direction = normalize(ray.direction);
+            
+        }
+        finalColor = finalColor + 0.25 * pixel;
+
+    }
+
     // sends it to texture, and regular shader draws buffer on screen
-    imageStore(img_output, pixel_coords, vec4(pixel,1.0));
+    imageStore(img_output, pixel_coords, vec4(finalColor,1.0));
 }
 
-vec3 rayColor(Ray ray)
+RenderState trace(Ray ray)
 {
-    vec3 color = vec3(0.0);
 
     // init vars
     float nearestHit = 999999999;
-    bool hitSomething = false;
     RenderState renderState;
+    renderState.hit = false;
+    renderState.color = vec3(1.0);
 
     for(int i = 0; i < sphereCount; i++)
     {
-        renderState = hit(ray, unpackSphere(i), 0.001, nearestHit, renderState);
+        RenderState newRenderState = hit(ray, unpackSphere(i), 0.001, nearestHit, renderState);
 
-        if (renderState.hit)
+        if (newRenderState.hit)
         {
-            nearestHit = renderState.t;
-            hitSomething = true;
+            nearestHit = newRenderState.t;
+            renderState = newRenderState;
         }
     }
 
     for(int i = int(sphereCount); i < (sphereCount) + (planeCount); i++)
     {
-        renderState = hit(ray, unpackPlane(i), 0.001, nearestHit, renderState);
+        RenderState newRenderState = hit(ray, unpackPlane(i), 0.001, nearestHit, renderState);
 
-        if (renderState.hit)
+        if (newRenderState.hit)
         {
-            nearestHit = renderState.t;
-            hitSomething = true;
+            nearestHit = newRenderState.t;
+            renderState = newRenderState;
         }
     }
 
-    if (hitSomething)
-    {
-        color = renderState.color;
-    }
-
-    return color;
+    return renderState;
 }
 
 RenderState hit(Ray ray, Sphere sphere, float tMin, float tMax, RenderState renderState)
@@ -155,9 +196,14 @@ RenderState hit(Ray ray, Sphere sphere, float tMin, float tMax, RenderState rend
 
         if( t> tMin && t < tMax)
         {
+            renderState.position = ray.origin + t * ray.direction;
+            // points from center of sphere towards position
+            renderState.normal = normalize(renderState.position - sphere.center);
             renderState.t = t;
             renderState.color = sphere.color;
             renderState.hit = true;
+            renderState.roughness = sphere.roughness;
+
             return renderState;
         }
     }
@@ -183,9 +229,14 @@ RenderState hit(Ray ray, Plane plane, float tMin, float tMax, RenderState render
 
             if(u > plane.uMin && u < plane.uMax && v > plane.vMin && v < plane.vMax)
             {
+                renderState.position = testPoint;
+            // points from center of sphere towards position
+                renderState.normal = plane.normal;
                 renderState.t = t;
                 renderState.color = plane.color;
                 renderState.hit = true;
+                renderState.roughness = plane.roughness;
+
                 return renderState;
             }
         }
@@ -205,6 +256,8 @@ Sphere unpackSphere(int index)
     // gets color
     attributeChunk = imageLoad(objects, ivec2(1, index));
     sphere.color = attributeChunk.xyz;
+    sphere.roughness = attributeChunk.w;
+
 
     return sphere;
 }
@@ -234,6 +287,8 @@ Plane unpackPlane(int index)
 
     attributeChunk = imageLoad(objects, ivec2(4, index));
     plane.color = attributeChunk.xyz;
+    plane.roughness = attributeChunk.w;
+
 
     return plane;
 }

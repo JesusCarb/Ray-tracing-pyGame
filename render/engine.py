@@ -28,19 +28,21 @@ class Engine:
         self.colorBuffer = material.Material(self.screenWidth, self.screenHeight)
         
         self.createResourceMemory()
+        self.createNoiseTexture()
         self.shader = self.createShader("shaders/frameBufferVertex.glsl",
                                         "shaders/frameBufferFragment.glsl")
         
         self.rayTracerShader = self.createComputeShader("shaders/rayTracer.glsl")
-    
+     
     def createResourceMemory(self):
         # packing data into a 1024 image
         # center, radius, color
-        # (x, y, z, radius), (r, g, b, _)
+        # (x, y, z, radius), (r, g, b, rpughness)
+        # (cx cy cz tx) (ty tz bx by) ( bz nx ny nz) (umin umax vmin vmax) (r g b roughness)
         objectData = []
 
-        for i in range(1024):
-            for attribute in range(8):
+        for object in range(1024):
+            for attribute in range(20):
                 objectData.append(0.0)
         self.objectData = np.array(objectData, dtype = np.float32)
 
@@ -59,6 +61,43 @@ class Engine:
     
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 5, 1024, 0, GL_RGBA, GL_FLOAT, bytes(self.objectData))
     
+    def createNoiseTexture(self):
+        #generate four screens worth of noise
+        # packing data into a 1024 image
+        # center, radius, color
+        # (x, y, z, radius), (r, g, b, _)
+        noise = []
+
+        #random noise (x y z 0)
+        for i in range(self.screenHeight):
+            for attribute in range(4 * self.screenWidth):
+                radius = np.random.uniform(low = 0.0, high = 0.99)
+                theta = np.random.uniform(low = 0.0, high = 2 * np.pi)
+                phi = np.random.uniform(low = 0.0, high = np.pi)
+                noise.append(radius * np.cos(theta) * np.cos(phi))
+                noise.append(radius * np.sin(theta) * np.cos(phi))
+                noise.append(radius * np.cos(phi))
+                noise.append(0.0)
+
+        self.noiseData = np.array(noise, dtype = np.float32)
+
+        # initialize all at once
+        # self.objectData = np.zeros(8 * 1024, dtype = np.float32)
+
+        self.noiseTexture = glGenTextures(1)
+        glActiveTexture(GL_TEXTURE2)
+        glBindTexture(GL_TEXTURE_2D, self.noiseTexture)
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+
+    
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F,
+                    4 * self.screenWidth, self.screenHeight,
+                    0, GL_RGBA, GL_FLOAT, bytes(self.noiseData))
+        
     def createShader(self, vertexFilepath, fragmentFilepath) -> int:
         """
             Read source code, compile and link shaders.
@@ -105,10 +144,13 @@ class Engine:
         self.objectData[20 * i + 4] = _sphere.color[0]
         self.objectData[20 * i + 5] = _sphere.color[1]
         self.objectData[20 * i + 6] = _sphere.color[2]
+        
+        self.objectData[20 * i + 7] = _sphere.roughness
+
 
     def recordPlane(self, i, _plane):
     
-        self.objectData[20 * i + 0] = _plane.center[0]
+        self.objectData[20 * i]     = _plane.center[0]
         self.objectData[20 * i + 1] = _plane.center[1]
         self.objectData[20 * i + 2] = _plane.center[2]
 
@@ -133,6 +175,9 @@ class Engine:
         self.objectData[20 * i + 16] = _plane.color[0]
         self.objectData[20 * i + 17] = _plane.color[1]
         self.objectData[20 * i + 18] = _plane.color[2]
+
+        self.objectData[20 * i + 19] = _plane.roughness
+
 
 
     def updateScene(self, _scene):
@@ -175,6 +220,9 @@ class Engine:
 
         glActiveTexture(GL_TEXTURE1)
         glBindImageTexture(1, self.objectDataTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)
+        glActiveTexture(GL_TEXTURE2)
+        glBindImageTexture(2, self.noiseTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)
+        
         # glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.sphereDataBuffer)
         # glBufferSubData(GL_SHADER_STORAGE_BUFFER ,0, 8 * 4 * len(_scene.spheres), self.sphereData)
         # glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, self.sphereDataBuffer)
